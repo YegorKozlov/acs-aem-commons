@@ -32,7 +32,6 @@ import com.google.common.cache.CacheBuilder;
 import org.apache.commons.lang.StringUtils;
 import org.apache.http.Header;
 import org.apache.http.message.BasicHeader;
-import org.apache.sling.api.SlingConstants;
 import org.apache.sling.api.SlingHttpServletRequest;
 import org.apache.sling.api.SlingHttpServletResponse;
 import org.apache.sling.api.request.RequestPathInfo;
@@ -42,6 +41,7 @@ import org.apache.sling.api.resource.ResourceResolver;
 import org.apache.sling.api.resource.ResourceResolverFactory;
 import org.apache.sling.api.resource.observation.ResourceChange;
 import org.apache.sling.api.resource.observation.ResourceChangeListener;
+import org.apache.sling.api.resource.path.Path;
 import org.apache.sling.caconfig.resource.ConfigurationResourceResolver;
 import org.apache.sling.engine.EngineConstants;
 import org.osgi.framework.BundleContext;
@@ -186,7 +186,7 @@ public class RedirectFilter extends AnnotatedStandardMBean
     private List<Header> onDeliveryHeaders;
     private Collection<String> methods = Arrays.asList("GET", "HEAD");
     private Collection<String> exts;
-    private Collection<String> paths;
+    private Collection<Path> paths;
     private Configuration config;
     private ExecutorService executor;
     private Cache<String, RedirectConfiguration> rulesCache;
@@ -214,7 +214,8 @@ public class RedirectFilter extends AnnotatedStandardMBean
 
             exts = config.extensions() == null ? Collections.emptySet()
                     : Arrays.stream(config.extensions()).filter(ext -> !ext.isEmpty()).collect(Collectors.toSet());
-            paths = config.paths() == null ? Collections.emptySet() : Arrays.stream(config.paths()).filter(path -> !path.isEmpty()).collect(Collectors.toSet());
+            paths = config.paths() == null ? Collections.emptySet() : Arrays.stream(config.paths()).filter(path -> !path.isEmpty())
+                    .map(Path::new).collect(Collectors.toSet());
             mapUrls = config.mapUrls();
             onDeliveryHeaders = new ArrayList<>();
             for(String kv : config.additionalHeaders()){
@@ -382,15 +383,14 @@ public class RedirectFilter extends AnnotatedStandardMBean
             if (untilDateTime != null && untilDateTime.isBefore(ZonedDateTime.now())) {
                 log.debug("redirect rule matched, but expired: {}", redirectRule.getUntilDate());
             } else {
-                RequestPathInfo pathInfo = slingRequest.getRequestPathInfo();
-                String resourcePath = pathInfo.getResourcePath();
+                String requestURI = slingRequest.getRequestURI();
 
                 String location = evaluate(match, slingRequest);
-                log.trace("matched {} to {} in {} ms", resourcePath, redirectRule.toString(),
+                log.trace("matched {} to {} in {} ms", requestURI, redirectRule,
                         System.currentTimeMillis() - t0);
 
                 log.debug("Redirecting {} to {}, statusCode: {}",
-                        resourcePath, location, redirectRule.getStatusCode());
+                        requestURI, location, redirectRule.getStatusCode());
                 slingResponse.setHeader("Location", location);
                 for(Header header : onDeliveryHeaders){
                     slingResponse.addHeader(header.getName(), header.getValue());
@@ -470,7 +470,7 @@ public class RedirectFilter extends AnnotatedStandardMBean
         return exts;
     }
 
-    protected Collection<String> getPaths() {
+    protected Collection<Path> getPaths() {
         return paths;
     }
 
@@ -517,8 +517,8 @@ public class RedirectFilter extends AnnotatedStandardMBean
             return false;
         }
 
-        String resourcePath = request.getRequestPathInfo().getResourcePath();
-        boolean matches = getPaths().isEmpty() || getPaths().stream().anyMatch(p -> resourcePath.startsWith(p + "/"));
+        String resourcePath = request.getRequestURI();
+        boolean matches = getPaths().isEmpty() || getPaths().stream().anyMatch(p -> p.matches(resourcePath));
         if (!matches) {
             log.trace("Request path [{}] not within any of {}.", resourcePath, paths);
             return false;
@@ -547,9 +547,10 @@ public class RedirectFilter extends AnnotatedStandardMBean
                 RedirectConfiguration cfg = loadRules(configPath);
                 return cfg == null ? RedirectConfiguration.EMPTY : cfg;
             });
-            String resourcePath = slingRequest.getRequestPathInfo().getResourcePath(); // /content/mysite/en/page.html
-            RedirectMatch m = rules.match(resourcePath);
+            String requestUri = slingRequest.getRequestURI();
+            RedirectMatch m = rules.match(requestUri);
             if (m == null && mapUrls()) { // try mapped url
+                String resourcePath = slingRequest.getRequestPathInfo().getResourcePath(); // /content/mysite/en/page.html
                 String mappedUrl= mapUrl(resourcePath, slingRequest); // https://www.mysite.com/en/page.html
                 if(!resourcePath.equals(mappedUrl)) { // don't bother if sling mappings are not defined for this path
                     String mappedPath = URI.create(mappedUrl).getPath();  // /en/page.html

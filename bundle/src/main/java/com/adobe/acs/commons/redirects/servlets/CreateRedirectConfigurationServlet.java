@@ -95,7 +95,7 @@ public class CreateRedirectConfigurationServlet extends SlingAllMethodsServlet {
             Resource config = bucket.getChild(configName);
             if (config == null) {
                 config = resolver.create(bucket, configName,
-                        ImmutableMap.of(JcrConstants.JCR_PRIMARYTYPE, JcrConstants.NT_UNSTRUCTURED,
+                        ImmutableMap.of(JcrConstants.JCR_PRIMARYTYPE, "sling:Folder",
                                 ResourceResolver.PROPERTY_RESOURCE_TYPE, REDIRECTS_RESOURCE_PATH));
                 log.info("created {}", config.getPath());
                 resolver.commit();

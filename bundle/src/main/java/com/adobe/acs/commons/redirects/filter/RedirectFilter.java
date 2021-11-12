@@ -413,7 +413,7 @@ public class RedirectFilter extends AnnotatedStandardMBean
         String location = match.getRule().evaluate(match.getMatcher());
         if (StringUtils.startsWith(location, "/") && !StringUtils.startsWith(location, "//")) {
             String ext = pathInfo.getExtension();
-            if (ext != null && !location.endsWith(ext)) {
+            if (ext != null && !location.endsWith(ext) && !location.endsWith("/")) {
                 location += "." + ext;
             }
             if (mapUrls()) {
@@ -498,7 +498,7 @@ public class RedirectFilter extends AnnotatedStandardMBean
      * @param request the request to check
      * @return whether redirection for the given is allowed
      */
-    private boolean doesRequestMatch(SlingHttpServletRequest request) {
+    boolean doesRequestMatch(SlingHttpServletRequest request) {
         WCMMode wcmMode = WCMMode.fromRequest(request);
         if (wcmMode != null && wcmMode != WCMMode.DISABLED) {
             log.trace("Request in author mode: {}, no redirection.", wcmMode);

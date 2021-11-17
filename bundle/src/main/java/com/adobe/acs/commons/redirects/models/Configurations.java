@@ -56,7 +56,7 @@ public class Configurations {
     private static final String REDIRECTS_RESOURCE_TYPE = "acs-commons/components/utilities/manage-redirects/redirects";
 
     public Collection<RedirectConfiguration> getConfigurations() {
-        String sql = "SELECT * FROM [nt:base] AS s WHERE ISDESCENDANTNODE([/conf]) "
+        String sql = "SELECT * FROM [nt:unstructured] AS s WHERE ISDESCENDANTNODE([/conf]) "
                 + "AND s.[sling:resourceType]='" + REDIRECTS_RESOURCE_TYPE + "'";
         log.debug(sql);
         Iterator<Resource> it = request.getResourceResolver().findResources(sql, Query.JCR_SQL2);

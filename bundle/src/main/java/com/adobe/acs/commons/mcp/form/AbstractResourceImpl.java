@@ -62,6 +62,9 @@ public class AbstractResourceImpl extends AbstractResource {
         if (resourceType != null) {
             meta.put("sling:resourceType", resourceType);
         }
+        if(this.meta.getResolutionPath() == null){
+            this.meta.put(ResourceMetadata.RESOLUTION_PATH,  path);
+        }
         meta.put(JCR_PRIMARYTYPE, "nt:unstructured");
     }
 

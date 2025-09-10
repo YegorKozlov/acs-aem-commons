@@ -13,6 +13,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com)
 
 ### Changed
 - #3614 Cross-Environment Replicator: new tool to replicate content across AEMaaCS environments
+- #3623 Content Sync: improve error handling
 
 ## 6.14.0 - 2025-07-15
 

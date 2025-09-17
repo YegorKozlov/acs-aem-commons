@@ -1,0 +1,7 @@
+{
+  "queue.maxparallel": "1",
+  "queue.name": "Content Sync Queue",
+  "queue.topics": "acs-commons/contentsync/job",
+  "queue.keepJobs": true,
+  "queue.retries": 0
+}

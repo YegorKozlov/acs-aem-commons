@@ -42,15 +42,16 @@
             sling:resourceType="granite/ui/components/coral/foundation/container">
             <items jcr:primaryType="nt:unstructured">
                 <form
-                    granite:class="transform-form"
                     granite:id="transform-form"
                     jcr:primaryType="nt:unstructured"
                     sling:resourceType="granite/ui/components/coral/foundation/form"
-                    action="/apps/acs-commons/content/contentsync/jcr:content/sync.html"
-                    foundation-form="{Boolean}true"
+                    action="/apps/acs-commons/content/contentsync/jcr:content/sync.run.json"
+                    async="{Boolean}true"
+                    enctype="application/x-www-form-urlencoded"
+                    foundationForm="{Boolean}true"
+                    loadingMask="{Boolean}true"
                     method="POST"
-                    style="vertical"
-                    target="replication_status_iframe">
+                    style="vertical">
                     <items jcr:primaryType="nt:unstructured">
                         <path
                             jcr:primaryType="nt:unstructured"
@@ -101,7 +102,7 @@
                                     checked="{Boolean}true"
                                     name="dryRun"
                                     text="Dry Run"
-                                    value="false"/>
+                                    value="true"/>
                                 <revision
                                     jcr:primaryType="nt:unstructured"
                                     sling:resourceType="granite/ui/components/coral/foundation/form/checkbox"
@@ -130,11 +131,11 @@
                             text="Submit"
                             type="submit"
                             variant="primary"/>
-                        <iframe
-                            granite:id="replication_status_iframe"
-                            jcr:primaryType="nt:unstructured"
-                            sling:resourceType="acs-commons/components/utilities/contentsync/iframe"/>
                     </items>
+                    <successresponse
+                        jcr:primaryType="nt:unstructured"
+                        sling:resourceType="/libs/granite/ui/components/coral/foundation/form/responses/redirect"
+                        href="/apps/acs-commons/content/contentsync/history.html"/>
                 </form>
             </items>
         </content>

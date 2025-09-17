@@ -75,7 +75,7 @@ public class ContentCatalogJobConsumer implements JobExecutor {
     private final transient Map<String, UpdateStrategy> updateStrategies = Collections.synchronizedMap(new LinkedHashMap<>());
 
     public static final String SERVICE_NAME = "content-sync";
-    public static final String JOB_TOPIC = "acs-commons/contentsync";
+    public static final String JOB_TOPIC = "acs-commons/contentsync/catalog";
 
     @Reference
     ResourceResolverFactory resourceResolverFactory;

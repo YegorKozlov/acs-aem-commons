@@ -90,7 +90,7 @@
 
 	document.addEventListener("DOMContentLoaded", function() {
         var dlg = document.getElementById("modalConfigureHost");
-    	dlg.querySelector("coral-select[name=\"./authType\"]")
+    	if(dlg) dlg.querySelector("coral-select[name=\"./authType\"]")
             .addEventListener("change", function(e) {
             	var authType = e.target.value;
             	dlg.querySelectorAll(".list-option-showhide-target").forEach(function(c){

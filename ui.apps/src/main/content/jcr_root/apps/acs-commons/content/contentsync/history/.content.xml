@@ -15,6 +15,17 @@
             jcr:primaryType="nt:unstructured"
             sling:resourceType="granite/ui/components/coral/foundation/text"
             text="Content Sync History"/>
+        <actions jcr:primaryType="nt:unstructured">
+            <secondary jcr:primaryType="nt:unstructured">
+                <history
+                        jcr:primaryType="nt:unstructured"
+                        sling:resourceType="granite/ui/components/coral/foundation/anchorbutton"
+                        href="/apps/acs-commons/content/contentsync.html"
+                        icon="sync"
+                        text="Content Sync"
+                        variant="primary"/>
+            </secondary>
+        </actions>
         <content
             granite:class="diagnosis-panel-with-margin"
             jcr:primaryType="nt:unstructured"

@@ -36,6 +36,7 @@ import static org.apache.jackrabbit.JcrConstants.JCR_MIXINTYPES;
  */
 public class CatalogItem {
     private final JsonObject object;
+    private String message;
 
     public CatalogItem(JsonObject object){
         this.object = object;
@@ -86,4 +87,11 @@ public class CatalogItem {
         return mixinArray;
     }
 
+    public String getMessage(){
+        return message;
+    }
+
+    public void setMessage(String message){
+        this.message = message;
+    }
 }

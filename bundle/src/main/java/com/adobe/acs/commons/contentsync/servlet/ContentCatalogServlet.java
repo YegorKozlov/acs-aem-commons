@@ -30,11 +30,7 @@ import org.apache.sling.event.jobs.JobManager;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
 
-import javax.json.Json;
-import javax.json.JsonObject;
-import javax.json.JsonObjectBuilder;
-import javax.json.JsonReader;
-import javax.json.JsonWriter;
+import javax.json.*;
 import javax.servlet.Servlet;
 import java.io.IOException;
 import java.io.InputStream;
@@ -44,6 +40,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 import static com.adobe.acs.commons.contentsync.ContentCatalogJobConsumer.JOB_TOPIC;
+import static org.apache.sling.event.jobs.Job.PROPERTY_RESULT_MESSAGE;
 
 /**
  * Submits a catalog job or retrieves job status and results.
@@ -117,15 +114,15 @@ public class ContentCatalogServlet extends SlingSafeMethodsServlet {
             result.add(JOB_ID, jobId);
             if(job != null){
                 result.add(JOB_STATUS, job.getJobState().toString());
-                String resultMessage = (String)job.getProperty("slingevent:resultMessage");
+                String resultMessage = (String)job.getProperty(PROPERTY_RESULT_MESSAGE);
                 if(resultMessage != null){
                     result.add("error", resultMessage);
                 }
             } else {
                 // finished job
                 result.add(JOB_STATUS, Job.JobState.SUCCEEDED.toString());
-                JsonObject results = getJobResults(request.getResourceResolver(), jobId);
-                result.add(JOB_RESOURCES, results.getJsonArray(JOB_RESOURCES));
+                JsonArray results = getJobResults(request, jobId);
+                result.add(JOB_RESOURCES, results);
             }
         }
 
@@ -145,11 +142,12 @@ public class ContentCatalogServlet extends SlingSafeMethodsServlet {
     }
 
     /**
-     * Read results of a completed job and returned parse it as JSON
+     * Read results of a completed job
      *
      */
-    JsonObject getJobResults(ResourceResolver resourceResolver, String jobId) throws IOException {
+    JsonArray getJobResults(SlingHttpServletRequest request, String jobId) throws IOException {
         String resultsPath = getJobResultsPath(jobId);
+        ResourceResolver resourceResolver = request.getResourceResolver();
         Resource resultsNode = resourceResolver.getResource(resultsPath);
         if(resultsNode == null) {
             throw new ResourceNotFoundException(resultsPath);
@@ -157,12 +155,20 @@ public class ContentCatalogServlet extends SlingSafeMethodsServlet {
         try(InputStream inputStream = resultsNode.adaptTo(InputStream.class);
             JsonReader reader = Json.createReader(new InputStreamReader(inputStream, StandardCharsets.UTF_8))
         ){
-            return reader.readObject();
+            JsonArray remoteItems = reader.readObject().getJsonArray(JOB_RESOURCES);
+            JsonArrayBuilder resources = Json.createArrayBuilder();
+            for(JsonValue val : remoteItems){
+                String path = val.asJsonObject().getString("path");
+                if(resourceResolver.getResource(path) != null){
+                    resources.add(val);
+                }
+            }
+            return resources.build();
         }
     }
 
     /**
-     * @return  the path to an nt:file resource with the job results as JSON
+     * @return  the path to a nt:file resource with the job results as JSON
      */
     public static String getJobResultsPath(String jobId) {
         return "/var/acs-commons/contentsync/jobs/" + jobId + "/results";

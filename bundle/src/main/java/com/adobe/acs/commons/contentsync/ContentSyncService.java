@@ -5,17 +5,24 @@ import org.apache.sling.event.jobs.consumer.JobExecutionContext;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.Set;
 
 public interface ContentSyncService {
-    List<CatalogItem> getRemoteItems(Job job, RemoteInstance remoteInstance, JobExecutionContext context) throws Exception;
+    List<CatalogItem> getRemoteItems(ExecutionContext context) throws Exception;
 
-    List<CatalogItem> getItemsToSync(Job job, RemoteInstance remoteInstance, JobExecutionContext context) throws Exception;
+    List<CatalogItem> getItemsToSync(ExecutionContext context) throws Exception;
 
-    void syncItem(CatalogItem item, RemoteInstance remoteInstance, JobExecutionContext context) throws Exception;
+    void syncItem(CatalogItem item, ExecutionContext context) throws Exception;
 
     RemoteInstance createRemoteInstance(Job job) throws Exception;
 
-    void sort(Collection<String> sortedNodes, RemoteInstance remoteInstance, JobExecutionContext context) throws Exception;
+    Collection<String> getNodesToSort(Collection<CatalogItem> items, ExecutionContext context);
 
-    void delete(Job job, List<CatalogItem> remoteItems, JobExecutionContext context) throws Exception;
+    void sortNodes(Collection<String> paths, ExecutionContext context) throws Exception;
+
+    void delete(ExecutionContext context) throws Exception;
+
+    UpdateStrategy getStrategy(String pid);
+
+    void startWorkflows(Collection<CatalogItem> items, ExecutionContext context) throws Exception;
 }

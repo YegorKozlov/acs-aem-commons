@@ -1,5 +1,6 @@
 package com.adobe.acs.commons.contentsync;
 
+import com.adobe.granite.security.user.util.AuthorizableUtil;
 import org.apache.sling.api.SlingHttpServletRequest;
 import org.apache.sling.api.resource.Resource;
 import org.apache.sling.event.jobs.Job;
@@ -36,7 +37,7 @@ public class ContentSyncHistory {
                 .map(Item::new).collect(Collectors.toList());
     }
 
-    public static class  Item extends LinkedHashMap  {
+    public class  Item extends LinkedHashMap  {
         private Job job;
 
         Item(Job job){
@@ -91,6 +92,10 @@ public class ContentSyncHistory {
 
         public int getCurrentStep(){
             return (int)getOrDefault("slingevent:progressStep", 0);
+        }
+
+        public String getStartedBy() {
+            return AuthorizableUtil.getFormattedName(request.getResourceResolver(), (String)get("cq:startedBy"));
         }
     }
 }

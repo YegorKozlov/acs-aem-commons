@@ -103,6 +103,10 @@
         	}	
         );
         
+        var workflowModelSelect = $("coral-select[name=workflowModel]");
+        if(workflowModelSelect) {
+	    	workflowModelSelect.get(0).value = $("input[name=defaultWorkflow]").get(0).value;
+        }
     });
     
 

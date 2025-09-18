@@ -2,10 +2,12 @@ package com.adobe.acs.commons.contentsync.impl;
 
 import com.adobe.acs.commons.adobeio.service.IntegrationService;
 import com.adobe.acs.commons.contentsync.*;
+import com.adobe.granite.workflow.WorkflowSession;
+import com.adobe.granite.workflow.exec.WorkflowData;
+import com.adobe.granite.workflow.model.WorkflowModel;
 import org.apache.sling.api.resource.*;
 import org.apache.sling.api.wrappers.ValueMapDecorator;
 import org.apache.sling.event.jobs.Job;
-import org.apache.sling.event.jobs.consumer.JobExecutionContext;
 import org.apache.sling.jcr.contentloader.ContentImporter;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
@@ -26,6 +28,7 @@ import java.util.stream.Collectors;
 @Component
 public class ContentSyncServiceImpl implements  ContentSyncService {
     public static final String SERVICE_NAME = "content-sync";
+    static final Map<String, Object> AUTH_INFO = Collections.singletonMap(ResourceResolverFactory.SUBSERVICE, SERVICE_NAME);
 
     private final transient Map<String, UpdateStrategy> updateStrategies = Collections.synchronizedMap(new LinkedHashMap<>());
 
@@ -54,7 +57,10 @@ public class ContentSyncServiceImpl implements  ContentSyncService {
     }
 
     @Override
-    public List<CatalogItem> getRemoteItems(Job job, RemoteInstance remoteInstance, JobExecutionContext context) throws Exception {
+    public List<CatalogItem> getRemoteItems(ExecutionContext context) throws Exception {
+        Job job = context.getJob();
+        RemoteInstance remoteInstance = context.getRemoteInstance();
+
         String root = (String)job.getProperty("root");
         boolean recursive = job.getProperty("recursive") != null;
         String catalogServlet = (String)job.getProperty("catalogServlet");
@@ -62,8 +68,7 @@ public class ContentSyncServiceImpl implements  ContentSyncService {
         ValueMap generalSettings;
         String strategyPid;
 
-        Map<String, Object> authInfo = Collections.singletonMap(ResourceResolverFactory.SUBSERVICE, SERVICE_NAME);
-        try (ResourceResolver resourceResolver = resourceResolverFactory.getServiceResourceResolver(authInfo)) {
+        try (ResourceResolver resourceResolver = resourceResolverFactory.getServiceResourceResolver(AUTH_INFO)) {
             generalSettings = ConfigurationUtils.getSettingsResource(resourceResolver).getValueMap();
             strategyPid = generalSettings.get(ConfigurationUtils.UPDATE_STRATEGY_KEY, String.class);
         }
@@ -88,18 +93,19 @@ public class ContentSyncServiceImpl implements  ContentSyncService {
     }
 
     @Override
-    public List<CatalogItem> getItemsToSync(Job job, RemoteInstance remoteInstance, JobExecutionContext context) throws Exception, GeneralSecurityException, URISyntaxException, InterruptedException {
-        boolean incremental = job.getProperty("incremental") != null;
+    public List<CatalogItem> getItemsToSync(ExecutionContext context) throws Exception, GeneralSecurityException, URISyntaxException, InterruptedException {
+        boolean incremental = context.getJob().getProperty("incremental") != null;
 
-        List<CatalogItem> remoteItems = getRemoteItems(job, remoteInstance, context);
+        List<CatalogItem> remoteItems = getRemoteItems(context);
+        context.put(ExecutionContext.REMOTE_ITEMS, remoteItems);
         List<CatalogItem> lst = new ArrayList<>();
 
-        Map<String, Object> authInfo = Collections.singletonMap(ResourceResolverFactory.SUBSERVICE, SERVICE_NAME);
-        try (ResourceResolver resourceResolver = resourceResolverFactory.getServiceResourceResolver(authInfo)) {
+        try (ResourceResolver resourceResolver = resourceResolverFactory.getServiceResourceResolver(AUTH_INFO)) {
             ValueMap generalSettings = ConfigurationUtils.getSettingsResource(resourceResolver).getValueMap();
 
             String strategyPid = generalSettings.get(ConfigurationUtils.UPDATE_STRATEGY_KEY, String.class);
             UpdateStrategy updateStrategy = getStrategy(strategyPid);
+            context.put(ExecutionContext.UPDATE_STRATEGY, updateStrategy);
             for(CatalogItem item : remoteItems){
                 Resource resource = resourceResolver.getResource(item.getPath());
                 if(resource == null || !incremental || updateStrategy.isModified(item, resource)){
@@ -113,16 +119,20 @@ public class ContentSyncServiceImpl implements  ContentSyncService {
     }
 
     @Override
-    public void syncItem(CatalogItem item, RemoteInstance remoteInstance, JobExecutionContext context) throws Exception {
+    public void syncItem(CatalogItem item, ExecutionContext context) throws Exception {
         if(item.getCustomExporter() != null){
             context.log( "{0} has a custom json exporter ({1}}) and cannot be imported", item.getPath(), item.getCustomExporter());
             return;
         }
+        context.log("{0}", item.getMessage());
+        if(context.dryRun()){
+            return;
+        }
 
-        Map<String, Object> authInfo = Collections.singletonMap(ResourceResolverFactory.SUBSERVICE, SERVICE_NAME);
-        try (ResourceResolver resourceResolver = resourceResolverFactory.getServiceResourceResolver(authInfo)) {
+        try (ResourceResolver resourceResolver = resourceResolverFactory.getServiceResourceResolver(AUTH_INFO)) {
             Session session = resourceResolver.adaptTo(Session.class);
             ContentReader contentReader = new ContentReader(session);
+            RemoteInstance remoteInstance = context.getRemoteInstance();
             ContentSync contentSync = new ContentSync(remoteInstance, resourceResolver, importer);
             try {
                 String reqPath = item.getContentUri() ;
@@ -159,7 +169,7 @@ public class ContentSyncServiceImpl implements  ContentSyncService {
      * @param pid the pid of the update strategy
      * @return the update strategy
      */
-    UpdateStrategy getStrategy(String pid) {
+    public UpdateStrategy getStrategy(String pid) {
         UpdateStrategy strategy;
         if(pid == null){
             strategy = updateStrategies.values().iterator().next();
@@ -194,40 +204,90 @@ public class ContentSyncServiceImpl implements  ContentSyncService {
     }
 
     @Override
-    public void sort(Collection<String> sortedNodes, RemoteInstance remoteInstance, JobExecutionContext context) throws Exception{
-        Map<String, Object> authInfo = Collections.singletonMap(ResourceResolverFactory.SUBSERVICE, SERVICE_NAME);
-        try (ResourceResolver resourceResolver = resourceResolverFactory.getServiceResourceResolver(authInfo)) {
+    public void sortNodes(Collection<String> paths, ExecutionContext context) throws Exception{
+        try (ResourceResolver resourceResolver = resourceResolverFactory.getServiceResourceResolver(AUTH_INFO)) {
+            RemoteInstance remoteInstance = context.getRemoteInstance();
             ContentSync contentSync = new ContentSync(remoteInstance, resourceResolver, importer);
-            for(String parentPath : sortedNodes){
-                Node targetNode = resourceResolver.getResource(parentPath).adaptTo(Node.class);
-                context.log("sorting child nodes of {0}", targetNode.getPath() );
+            for(String parentPath : paths){
+                Resource res = resourceResolver.getResource(parentPath);
+                context.log("sorting child nodes of {0}", parentPath );
 
-                contentSync.sort(targetNode);
+                if(!context.dryRun() && res != null) {
+                    Node targetNode = res.adaptTo(Node.class);
+                    contentSync.sort(targetNode);
+                }
             }
+            resourceResolver.commit();
+        } catch (Exception e){
+            StringWriter sw = new StringWriter();
+            e.printStackTrace(new PrintWriter(sw));
+            context.log("{0}", sw.toString());
         }
     }
 
-    public void delete(Job job, List<CatalogItem> remoteItems, JobExecutionContext context) throws Exception {
-        boolean dryRun = job.getProperty("dryRun") != null;
-        Map<String, Object> authInfo = Collections.singletonMap(ResourceResolverFactory.SUBSERVICE, SERVICE_NAME);
-        try (ResourceResolver resourceResolver = resourceResolverFactory.getServiceResourceResolver(authInfo)) {
-            ValueMap generalSettings = ConfigurationUtils.getSettingsResource(resourceResolver).getValueMap();
+    @Override
+    public Set<String> getNodesToSort(Collection<CatalogItem> items, ExecutionContext context){
+        String root = (String)context.getJob().getProperty("root");
+        
+        Set<String> sortedNodes = new LinkedHashSet<>();
+        for(CatalogItem item : items){
+            String parentPath = ResourceUtil.getParent(item.getPath());
+            if(parentPath.startsWith(root)){
+                sortedNodes.add(parentPath);
+            }
+        }
+        return sortedNodes;
+    }
 
-            String strategyPid = generalSettings.get(ConfigurationUtils.UPDATE_STRATEGY_KEY, String.class);
-            UpdateStrategy updateStrategy = getStrategy(strategyPid);
-            Collection<String> remotePaths = remoteItems.stream().map(c -> c.getPath()).collect(Collectors.toList());
-            Map<String, Object> jobProperties = job.getPropertyNames().stream().collect(Collectors.toMap(Function.identity(), job::getProperty));
-            Collection<String> localPaths = updateStrategy.getItems(jobProperties).stream().map(c -> c.getPath()).collect(Collectors.toList());
+    @Override
+    public void delete(ExecutionContext context) throws Exception {
+        Job job = context.getJob();
+        UpdateStrategy updateStrategy = (UpdateStrategy)context.get(ExecutionContext.UPDATE_STRATEGY);
+        List<CatalogItem> remoteItems = (List<CatalogItem>)context.get(ExecutionContext.REMOTE_ITEMS);
+        Collection<String> remotePaths = remoteItems.stream().map(c -> c.getPath()).collect(Collectors.toList());
 
-            localPaths.removeAll(remotePaths);
+        Map<String, Object> jobProperties = job.getPropertyNames().stream().collect(Collectors.toMap(Function.identity(), job::getProperty));
+        Collection<String> localPaths = updateStrategy
+                .getItems(jobProperties).stream().map(c -> c.getPath())
+                .collect(Collectors.toList());
 
+        localPaths.removeAll(remotePaths);
+
+        try (ResourceResolver resourceResolver = resourceResolverFactory.getServiceResourceResolver(AUTH_INFO)) {
             for(String path : localPaths){
                 Resource res = resourceResolver.getResource(path);
                 if(res != null){
                     context.log("deleting {0}", path);
-                    if(!dryRun) {
+                    if(!context.dryRun()) {
                         resourceResolver.delete(res);
                     }
+                }
+            }
+            resourceResolver.commit();
+        } catch (Exception e){
+            StringWriter sw = new StringWriter();
+            e.printStackTrace(new PrintWriter(sw));
+            context.log("{0}", sw.toString());
+        }
+    }
+
+    @Override
+    public void startWorkflows(Collection<CatalogItem> items, ExecutionContext context) throws Exception {
+        Job job = context.getJob();
+        String workflowModel = (String)context.getJob().getProperty("workflowModel");
+
+        try (ResourceResolver resourceResolver = resourceResolverFactory.getServiceResourceResolver(AUTH_INFO)) {
+            List<String> paths = items.stream()
+                    .map(item -> item.getPath())
+                    .filter(path -> resourceResolver.getResource(path) != null)
+                    .collect(Collectors.toList());
+            WorkflowSession workflowSession = resourceResolver.adaptTo(WorkflowSession.class);
+            WorkflowModel model = workflowSession.getModel(workflowModel);
+            context.log("starting {0} workflow for {1} resources", workflowModel, paths.size());
+            for (String path : paths) {
+                WorkflowData data = workflowSession.newWorkflowData("JCR_PATH", path);
+                if(!context.dryRun()) {
+                    workflowSession.startWorkflow(model, data);
                 }
             }
         }

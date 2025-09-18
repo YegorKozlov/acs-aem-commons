@@ -183,7 +183,7 @@ public class TestContentCatalogServlet {
 
         // Verify
         assertThrows(ResourceNotFoundException.class, () -> {
-            servlet.getJobResults(context.resourceResolver(), jobId);
+            servlet.getJobResults(context.request(), jobId);
         });
     }
 }

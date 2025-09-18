@@ -47,6 +47,7 @@
                     sling:resourceType="granite/ui/components/coral/foundation/form"
                     action="/apps/acs-commons/content/contentsync/jcr:content/sync.run.json"
                     async="{Boolean}true"
+                    dataPath="${requestPathInfo.suffix}"
                     enctype="application/x-www-form-urlencoded"
                     foundationForm="{Boolean}true"
                     loadingMask="{Boolean}true"
@@ -76,6 +77,7 @@
                             jcr:primaryType="nt:unstructured"
                             sling:resourceType="granite/ui/components/coral/foundation/form/select"
                             emptyText="Select one"
+                            emptyOption="{Boolean}true"
                             fieldLabel="On-complete workflow "
                             ignoreData="{Boolean}true"
                             name="workflowModel">
@@ -94,7 +96,9 @@
                                     checked="{Boolean}true"
                                     name="incremental"
                                     text="Incremental update. Will only copy new and changed resources"
-                                    value="true"/>
+                                    value="true"
+                                    uncheckedValue="false"
+                                />
                                 <dryRun
                                     granite:class="notice-wide"
                                     jcr:primaryType="nt:unstructured"
@@ -102,26 +106,34 @@
                                     checked="{Boolean}true"
                                     name="dryRun"
                                     text="Dry Run"
-                                    value="true"/>
+                                    value="true"
+                                    uncheckedValue="false"
+                                />
                                 <revision
                                     jcr:primaryType="nt:unstructured"
                                     sling:resourceType="granite/ui/components/coral/foundation/form/checkbox"
                                     name="createVersion"
                                     text="Create revision before update"
-                                    value="true"/>
+                                    value="true"
+                                    uncheckedValue="false"
+                                />
                                 <delete
                                     jcr:primaryType="nt:unstructured"
                                     sling:resourceType="granite/ui/components/coral/foundation/form/checkbox"
                                     name="delete"
                                     text="Delete resources that exist in the destination but not in the source"
-                                    value="true"/>
+                                    value="true"
+                                    uncheckedValue="false"
+                                />
                                 <recursive
                                     jcr:primaryType="nt:unstructured"
                                     sling:resourceType="granite/ui/components/coral/foundation/form/checkbox"
                                     checked="{Boolean}true"
                                     name="recursive"
                                     text="Recursive"
-                                    value="true"/>
+                                    value="true"
+                                    uncheckedValue="false"
+                                />
                             </items>
                         </checkboxes>
                         <submit
@@ -137,6 +149,17 @@
                         sling:resourceType="/libs/granite/ui/components/coral/foundation/form/responses/redirect"
                         href="/apps/acs-commons/content/contentsync/history.html"/>
                 </form>
+                <settings
+                    jcr:primaryType="nt:unstructured"
+                    sling:resourceType="granite/ui/components/coral/foundation/form"
+                    dataPath="/var/acs-commons/contentsync/settings">
+                    <items jcr:primaryType="nt:unstructured">
+                        <defaultWorkflow
+                            jcr:primaryType="nt:unstructured"
+                            sling:resourceType="granite/ui/components/coral/foundation/form/hidden"
+                            name="defaultWorkflow"/>
+                    </items>
+                </settings>
             </items>
         </content>
         <sync

@@ -72,7 +72,6 @@ import static com.adobe.acs.commons.contentsync.servlet.ContentCatalogServlet.ge
 )
 public class ContentCatalogJobConsumer implements JobExecutor {
     private static final Logger log = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
-    private final transient Map<String, UpdateStrategy> updateStrategies = Collections.synchronizedMap(new LinkedHashMap<>());
 
     public static final String SERVICE_NAME = "content-sync";
     public static final String JOB_TOPIC = "acs-commons/contentsync/catalog";
@@ -80,25 +79,19 @@ public class ContentCatalogJobConsumer implements JobExecutor {
     @Reference
     ResourceResolverFactory resourceResolverFactory;
 
-    @Reference(service = UpdateStrategy.class,
-            cardinality = ReferenceCardinality.MULTIPLE,
-            policy = ReferencePolicy.DYNAMIC)
+    @Reference
+    ContentSyncService syncService;
+
     protected void bindDeltaStrategy(UpdateStrategy strategy) {
-        if (strategy != null) {
-            String key = strategy.getClass().getName();
-            updateStrategies.put(key, strategy);
-        }
     }
 
     protected void unbindDeltaStrategy(UpdateStrategy strategy) {
-        String key = strategy.getClass().getName();
-        updateStrategies.remove(key);
     }
 
     @Override
     public JobExecutionResult process(Job job, JobExecutionContext context) {
         String pid = (String)job.getProperty("strategy");
-        UpdateStrategy updateStrategy = getStrategy(pid);
+        UpdateStrategy updateStrategy = syncService.getStrategy(pid);
         try {
             log.debug("processing {}, pid: {}", job.getId(), pid);
             Map<String, Object> jobProperties = job.getPropertyNames().stream().collect(Collectors.toMap(Function.identity(), job::getProperty));
@@ -117,28 +110,6 @@ public class ContentCatalogJobConsumer implements JobExecutor {
             return context.result().message(e.getMessage()).cancelled();
         }
         return context.result().succeeded();
-    }
-
-    /**
-     * Get the strategy to build catalog.
-     * If pid is null, the first available strategy is used.
-     *
-     * @param pid the pid of the update strategy
-     * @return the update strategy
-     */
-    UpdateStrategy getStrategy(String pid) {
-        UpdateStrategy strategy;
-        if(pid == null){
-            strategy = updateStrategies.values().iterator().next();
-        } else {
-            strategy = updateStrategies.get(pid);
-            if(strategy == null){
-                throw new IllegalArgumentException("Cannot find UpdateStrategy for pid " + pid + "."
-                        + " Available strategies: " + updateStrategies.values()
-                        .stream().map(s -> s.getClass().getName()).collect(Collectors.toList()));
-            }
-        }
-        return strategy;
     }
 
     /**

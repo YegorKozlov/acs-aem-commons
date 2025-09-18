@@ -18,24 +18,16 @@
 <section class="coral-Form coral-Form--vertical">
 
     <table is="coral-table">
-        <colgroup>
-            <col is="coral-table-column"/>
-            <col is="coral-table-column"/>
-            <col is="coral-table-column"/>
-            <col is="coral-table-column"/>
-            <col is="coral-table-column"/>
-            <col is="coral-table-column"/>
-            <col is="coral-table-column"/>
-        </colgroup>
         <thead is="coral-table-head">
         <tr is="coral-table-row">
             <th is="coral-table-headercell">Initiator</th>
             <th is="coral-table-headercell">Start Time</th>
             <th is="coral-table-headercell">Finish Time</th>
             <th is="coral-table-headercell">Path</th>
-            <th is="coral-table-headercell">Resources Updated</th>
+            <th is="coral-table-headercell"># Resources</th>
             <th is="coral-table-headercell">Status</th>
-            <th is="coral-table-headercell">Download Log</th>
+            <th is="coral-table-headercell">Logs</th>
+            <th is="coral-table-headercell">Re-Run</th>
         </tr>
         </thead>
 
@@ -55,7 +47,12 @@
                     <coral-tag color="${item.statusColor}" data-sly-test="${item.dryRun}">DRY RUN</coral-tag>
                 </td>
                 <td is="coral-table-cell">
-                    <a title="view log in a new tab" href="/apps/acs-commons/content/contentsync/jcr:content/sync.log.txt/${item.slingevent:eventId}" target="_blank"><coral-icon icon="download" size="XS"></coral-icon></a>
+                    <a title="view log in a new tab" href="/apps/acs-commons/content/contentsync/jcr:content/sync.log.txt/${item.slingevent:eventId}" target="_blank"
+                       is="coral-anchorbutton" variant="quiet" icon="download" iconsize="S"></a>
+                </td>
+                <td is="coral-table-cell">
+                    <a title="re-run" href="/apps/acs-commons/content/contentsync.html/var/eventing/jobs/finished/acs-commons.contentsync.job/${item.slingevent:eventId}"
+                       is="coral-anchorbutton" variant="quiet" icon="redo" iconsize="S"></a>
                 </td>
             </tr>
         </sly>

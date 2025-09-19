@@ -1,8 +1,12 @@
 package com.adobe.acs.commons.contentsync;
 
+import org.apache.sling.api.resource.LoginException;
+import org.apache.sling.api.resource.PersistenceException;
 import org.apache.sling.event.jobs.Job;
 import org.apache.sling.event.jobs.consumer.JobExecutionContext;
 
+import javax.jcr.RepositoryException;
+import javax.json.JsonObject;
 import java.util.Collection;
 import java.util.List;
 import java.util.Set;

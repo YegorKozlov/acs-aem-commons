@@ -20,6 +20,7 @@
 package com.adobe.acs.commons.contentsync.impl;
 
 import com.adobe.acs.commons.contentsync.CatalogItem;
+import com.adobe.acs.commons.contentsync.ContentCatalogJobConsumer;
 import com.adobe.acs.commons.contentsync.UpdateStrategy;
 import com.adobe.granite.security.user.util.AuthorizableUtil;
 import com.day.cq.commons.PathInfo;
@@ -76,8 +77,7 @@ public class LastModifiedStrategy implements UpdateStrategy {
         }
         boolean nonRecursive = "false".equals(request.get("recursive"));
 
-        Map<String, Object> authInfo = Collections.singletonMap(ResourceResolverFactory.SUBSERVICE, SERVICE_NAME);
-        try (ResourceResolver resolver = resourceResolverFactory.getServiceResourceResolver(authInfo)) {
+        try (ResourceResolver resolver = resourceResolverFactory.getServiceResourceResolver(ContentCatalogJobConsumer.AUTH_INFO)) {
 
             Resource root = resolver.getResource(rootPath);
             if (root == null) {

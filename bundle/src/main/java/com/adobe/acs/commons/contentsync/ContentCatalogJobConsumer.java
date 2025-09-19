@@ -47,6 +47,8 @@ import javax.json.JsonObjectBuilder;
 import javax.json.JsonWriter;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.lang.invoke.MethodHandles;
 import java.util.Calendar;
 import java.util.Collections;
@@ -73,7 +75,8 @@ import static com.adobe.acs.commons.contentsync.servlet.ContentCatalogServlet.ge
 public class ContentCatalogJobConsumer implements JobExecutor {
     private static final Logger log = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
-    public static final String SERVICE_NAME = "content-sync";
+    public static final String SERVICE_NAME = "content-sync-reader";
+    public static final Map<String, Object> AUTH_INFO = Collections.singletonMap(ResourceResolverFactory.SUBSERVICE, SERVICE_NAME);
     public static final String JOB_TOPIC = "acs-commons/contentsync/catalog";
 
     @Reference
@@ -89,10 +92,11 @@ public class ContentCatalogJobConsumer implements JobExecutor {
     }
 
     @Override
-    public JobExecutionResult process(Job job, JobExecutionContext context) {
+    public JobExecutionResult process(Job job, JobExecutionContext jobContext) {
         String pid = (String)job.getProperty("strategy");
-        UpdateStrategy updateStrategy = syncService.getStrategy(pid);
         try {
+            UpdateStrategy updateStrategy = syncService.getStrategy(pid);
+
             log.debug("processing {}, pid: {}", job.getId(), pid);
             Map<String, Object> jobProperties = job.getPropertyNames().stream().collect(Collectors.toMap(Function.identity(), job::getProperty));
 
@@ -107,15 +111,19 @@ public class ContentCatalogJobConsumer implements JobExecutor {
             save(result.build(), job);
         } catch (Exception e) {
             log.error("content-sync job failed: {}", job.getId(), e);
-            return context.result().message(e.getMessage()).cancelled();
+
+            StringWriter sw = new StringWriter();
+            e.printStackTrace(new PrintWriter(sw));
+            jobContext.log("{0}", sw.toString());
+            return jobContext.result().cancelled();
         }
-        return context.result().succeeded();
+        return jobContext.result().succeeded();
     }
 
     /**
      * Save results of a completed job into a nt:file node
      *
-     * The path is determined by {@link ContentCatalogServlet#getJobResultsPath(String jobId)}
+     * The path is determined by {@link ContentCatalogServlet#getJobResultsPath(Job jobId)}
      * @return  the path of the created nt:file node
      */
     String save(JsonObject result, Job job) throws RepositoryException, LoginException, PersistenceException {
@@ -123,9 +131,8 @@ public class ContentCatalogJobConsumer implements JobExecutor {
         try(JsonWriter out = Json.createWriter(bout)){
             out.writeObject(result);
         }
-        Map<String, Object> authInfo = Collections.singletonMap(ResourceResolverFactory.SUBSERVICE, SERVICE_NAME);
-        try (ResourceResolver resolver = resourceResolverFactory.getServiceResourceResolver(authInfo)) {
-            String resultsPath = getJobResultsPath(job.getId());
+        try (ResourceResolver resolver = resourceResolverFactory.getServiceResourceResolver(AUTH_INFO)) {
+            String resultsPath = getJobResultsPath(job);
             String resultsParent = ResourceUtil.getParent(resultsPath);
             String resultsNode = ResourceUtil.getName(resultsPath);
             Node parentNode = JcrUtils.getOrCreateByPath(resultsParent, JcrConstants.NT_FOLDER, JcrConstants.NT_FOLDER, resolver.adaptTo(Session.class), false);

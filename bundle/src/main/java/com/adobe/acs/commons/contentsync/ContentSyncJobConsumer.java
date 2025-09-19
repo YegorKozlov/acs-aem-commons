@@ -7,9 +7,12 @@ import org.apache.sling.event.jobs.consumer.JobExecutionResult;
 import org.apache.sling.event.jobs.consumer.JobExecutor;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.lang.invoke.MethodHandles;
 import java.util.Collection;
 import java.util.List;
 
@@ -22,6 +25,7 @@ import static com.adobe.acs.commons.contentsync.ContentSyncJobConsumer.JOB_TOPIC
         }
 )
 public class ContentSyncJobConsumer implements JobExecutor {
+    private static final Logger log = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
     public static final String JOB_TOPIC = "acs-commons/contentsync/job";
 
     @Reference
@@ -55,6 +59,8 @@ public class ContentSyncJobConsumer implements JobExecutor {
 
             syncService.startWorkflows(items, context);
         } catch (Exception e) {
+            log.error("content-sync job failed: {}", job.getId(), e);
+
             StringWriter sw = new StringWriter();
             e.printStackTrace(new PrintWriter(sw));
             jobContext.log("{0}", sw.toString());

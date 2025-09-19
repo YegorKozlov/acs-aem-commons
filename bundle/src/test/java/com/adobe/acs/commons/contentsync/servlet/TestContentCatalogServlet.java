@@ -148,7 +148,10 @@ public class TestContentCatalogServlet {
     public void testGetCompletedJobResults() throws Exception {
         // Setup
         String jobId = "2025/4/10/test-job";
-        when(jobManager.getJobById(jobId)).thenReturn(null);
+        Job job = mock(Job.class);
+        when(job.getId()).thenReturn(jobId);
+        when(job.getJobState()).thenReturn(Job.JobState.QUEUED);
+        when(jobManager.getJobById(jobId)).thenReturn(job);
 
         String resultsJson = "{\"resources\":[{\"path\":\"/content/test\",\"lastModified\":1234567890}]}";
         MockSlingHttpServletRequest request = context.request();
@@ -156,7 +159,7 @@ public class TestContentCatalogServlet {
 
         when(jobManager.getJobById(jobId)).thenReturn(null); // Job completed
 
-        String resultsPath = ContentCatalogServlet.getJobResultsPath(jobId);
+        String resultsPath = ContentCatalogServlet.getJobResultsPath(job);
         context.build()
                 .resource(ResourceUtil.getParent(resultsPath))
                 .file(ResourceUtil.getName(resultsPath), new ByteArrayInputStream(resultsJson.getBytes()));

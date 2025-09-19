@@ -136,6 +136,11 @@
                                 />
                             </items>
                         </checkboxes>
+                        <resourceType
+                                jcr:primaryType="nt:unstructured"
+                                sling:resourceType="granite/ui/components/coral/foundation/form/hidden"
+                                name="ensureAvailable"
+                                value="true"/>
                         <submit
                             granite:id="executeQueryButton"
                             jcr:primaryType="nt:unstructured"

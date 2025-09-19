@@ -19,11 +19,12 @@ public class ExecutionContext extends HashMap<String, Object> {
         this.job = job;
         this.remoteInstance = remoteInstance;
 
-        log("root: {0}", job.getProperty("root"));
-        log("dryRun: {0}", dryRun());
+        log("remote host: {0}", remoteInstance.getHostConfiguration().getHost());
+        log("sync root: {0}", job.getProperty("root"));
     }
 
     public void log(String msg, Object... args){
+        if(dryRun()) msg = "[dry-run] " + msg;
         jobContext.log(msg, args);
     }
 

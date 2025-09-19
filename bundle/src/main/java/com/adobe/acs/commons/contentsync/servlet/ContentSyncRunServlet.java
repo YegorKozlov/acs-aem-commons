@@ -65,6 +65,10 @@ public class ContentSyncRunServlet extends SlingAllMethodsServlet {
             checkAccess(slingRequest);
 
             Job job = submitJob(slingRequest);
+            boolean ensureAvailable = slingRequest.getParameter("ensureAvailable") != null;
+            if(ensureAvailable) {
+                ensureAvailable(job.getId(), 500L, 5000L);
+            }
 
             JsonObjectBuilder result = Json.createObjectBuilder();
             result.add(JOB_ID, job.getId());
@@ -116,5 +120,26 @@ public class ContentSyncRunServlet extends SlingAllMethodsServlet {
         if (!canAccess) {
             throw new IllegalAccessException("You do not have permission to run content sync");
         }
+    }
+
+    Job ensureAvailable(String jobId, long pollMs, long maxWait) throws InterruptedException {
+        Job job = null;
+
+        long t0 = System.currentTimeMillis();
+        for(;;){
+            if(System.currentTimeMillis() - t0 > maxWait){
+                break;
+            }
+            job = jobManager.findJobs(JobManager.QueryType.ACTIVE, JOB_TOPIC, 10, null)
+                    .stream()
+                    .filter(j -> jobId.equals(j.getId()))
+                    .findAny()
+                    .orElse(null);
+            if(job != null){
+                break;
+            }
+            Thread.sleep(pollMs);
+        }
+        return job;
     }
 }

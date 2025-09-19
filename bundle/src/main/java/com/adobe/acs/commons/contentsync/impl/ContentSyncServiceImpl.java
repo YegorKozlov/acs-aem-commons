@@ -5,7 +5,11 @@ import com.adobe.acs.commons.contentsync.*;
 import com.adobe.granite.workflow.WorkflowSession;
 import com.adobe.granite.workflow.exec.WorkflowData;
 import com.adobe.granite.workflow.model.WorkflowModel;
-import org.apache.sling.api.resource.*;
+import org.apache.sling.api.resource.Resource;
+import org.apache.sling.api.resource.ResourceResolver;
+import org.apache.sling.api.resource.ResourceResolverFactory;
+import org.apache.sling.api.resource.ResourceUtil;
+import org.apache.sling.api.resource.ValueMap;
 import org.apache.sling.api.wrappers.ValueMapDecorator;
 import org.apache.sling.event.jobs.Job;
 import org.apache.sling.jcr.contentloader.ContentImporter;
@@ -27,8 +31,8 @@ import java.util.stream.Collectors;
 
 @Component
 public class ContentSyncServiceImpl implements  ContentSyncService {
-    public static final String SERVICE_NAME = "content-sync";
-    static final Map<String, Object> AUTH_INFO = Collections.singletonMap(ResourceResolverFactory.SUBSERVICE, SERVICE_NAME);
+    public static final String SERVICE_NAME = "content-sync-writer";
+    public static final Map<String, Object> AUTH_INFO = Collections.singletonMap(ResourceResolverFactory.SUBSERVICE, SERVICE_NAME);
 
     private final transient Map<String, UpdateStrategy> updateStrategies = Collections.synchronizedMap(new LinkedHashMap<>());
 
@@ -191,8 +195,7 @@ public class ContentSyncServiceImpl implements  ContentSyncService {
         ValueMap generalSettings;
         SyncHostConfiguration hostConfig;
 
-        Map<String, Object> authInfo = Collections.singletonMap(ResourceResolverFactory.SUBSERVICE, SERVICE_NAME);
-        try (ResourceResolver resourceResolver = resourceResolverFactory.getServiceResourceResolver(authInfo)) {
+        try (ResourceResolver resourceResolver = resourceResolverFactory.getServiceResourceResolver(AUTH_INFO)) {
             generalSettings = new ValueMapDecorator(
                     new HashMap(ConfigurationUtils.getSettingsResource(resourceResolver).getValueMap())
             );
@@ -273,9 +276,10 @@ public class ContentSyncServiceImpl implements  ContentSyncService {
 
     @Override
     public void startWorkflows(Collection<CatalogItem> items, ExecutionContext context) throws Exception {
-        Job job = context.getJob();
         String workflowModel = (String)context.getJob().getProperty("workflowModel");
-
+        if(workflowModel == null || workflowModel.isEmpty()){
+            return;
+        }
         try (ResourceResolver resourceResolver = resourceResolverFactory.getServiceResourceResolver(AUTH_INFO)) {
             List<String> paths = items.stream()
                     .map(item -> item.getPath())

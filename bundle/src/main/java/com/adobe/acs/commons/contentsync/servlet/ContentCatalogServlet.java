@@ -36,6 +36,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -95,6 +96,8 @@ public class ContentCatalogServlet extends SlingSafeMethodsServlet {
     public static final String JOB_ID = "jobId";
     public static final String JOB_STATUS = "status";
     public static final String JOB_RESOURCES = "resources";
+    public static final String JOB_RESULTS_BASE_PATH = "/var/acs-commons/contentsync/jobs";
+    public static final String JOB_RESULTS = "results";
 
     @Reference
     private JobManager jobManager;
@@ -110,18 +113,16 @@ public class ContentCatalogServlet extends SlingSafeMethodsServlet {
             result.add(JOB_ID, job.getId());
             result.add(JOB_STATUS, job.getJobState().toString());
         } else {
-            Job job = jobManager.getJobById(jobId);
             result.add(JOB_ID, jobId);
+            Job job = jobManager.getJobById(jobId);
             if(job != null){
                 result.add(JOB_STATUS, job.getJobState().toString());
-                String resultMessage = (String)job.getProperty(PROPERTY_RESULT_MESSAGE);
-                if(resultMessage != null){
-                    result.add("error", resultMessage);
+                String[] progressLog = (String[])job.getProperty(Job.PROPERTY_JOB_PROGRESS_LOG);
+                if(progressLog != null){
+                    result.add(Job.PROPERTY_JOB_PROGRESS_LOG, String.join("\n", Arrays.asList(progressLog)));
                 }
-            } else {
-                // finished job
-                result.add(JOB_STATUS, Job.JobState.SUCCEEDED.toString());
-                JsonArray results = getJobResults(request, jobId);
+                String resultsPath = getJobResultsPath(job);
+                JsonArray results = getJobResults(request, resultsPath);
                 result.add(JOB_RESOURCES, results);
             }
         }
@@ -137,6 +138,7 @@ public class ContentCatalogServlet extends SlingSafeMethodsServlet {
      */
     Job submitJob(SlingHttpServletRequest request){
         Map<String, Object> jobProps = new HashMap<>();
+        jobProps.put(JOB_RESULTS, JOB_RESULTS_BASE_PATH + "/%s/results");
         request.getParameterMap().forEach((key, value) -> jobProps.put(key, value[0]));
         return jobManager.addJob(JOB_TOPIC, jobProps);
     }
@@ -145,8 +147,7 @@ public class ContentCatalogServlet extends SlingSafeMethodsServlet {
      * Read results of a completed job
      *
      */
-    JsonArray getJobResults(SlingHttpServletRequest request, String jobId) throws IOException {
-        String resultsPath = getJobResultsPath(jobId);
+    JsonArray getJobResults(SlingHttpServletRequest request, String resultsPath) throws IOException {
         ResourceResolver resourceResolver = request.getResourceResolver();
         Resource resultsNode = resourceResolver.getResource(resultsPath);
         if(resultsNode == null) {
@@ -170,7 +171,8 @@ public class ContentCatalogServlet extends SlingSafeMethodsServlet {
     /**
      * @return  the path to a nt:file resource with the job results as JSON
      */
-    public static String getJobResultsPath(String jobId) {
-        return "/var/acs-commons/contentsync/jobs/" + jobId + "/results";
+    public static String getJobResultsPath(Job job) {
+        String ptrn = (String)job.getProperty(JOB_RESULTS);
+        return String.format(ptrn, job.getId());
     }
 }

@@ -200,7 +200,7 @@ public class RemoteInstance implements Closeable {
                     .map(Map.Entry::getKey)
                     .collect(Collectors.toList());
         } catch (FileNotFoundException e){
-            children = Collections.emptyList();im
+            children = Collections.emptyList();
         }
         return children;
     }

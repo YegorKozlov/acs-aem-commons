@@ -84,8 +84,8 @@ public class ContentSyncRunServlet extends SlingAllMethodsServlet {
 
             JSONResponse jsonResponse = new JSONResponse();
             jsonResponse.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Failed to submit content-sync job: " + e.getMessage());
-            jsonResponse.send(slingResponse, true);
             jsonResponse.setProperty("error", sw.toString());
+            jsonResponse.send(slingResponse, true);
         }
     }
 
@@ -116,7 +116,7 @@ public class ContentSyncRunServlet extends SlingAllMethodsServlet {
                 break;
             }
         }
-        boolean canAccess = config.allowedGroups().length == 0 || user.isAdmin() || isAllowedMember;
+        boolean canAccess = user.isAdmin() || isAllowedMember;
         if (!canAccess) {
             throw new IllegalAccessException("You do not have permission to run content sync");
         }

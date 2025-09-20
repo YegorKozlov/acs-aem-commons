@@ -6,6 +6,7 @@
         jcr:title="Content Sync - Configure AEM Environments"
         sling:resourceType="granite/ui/components/shell/collectionpage"
         consoleId="contentsyncHosts"
+        sling:vanityPath="/contentsync/configure"
         contentPath="/content"
         currentView="${state[&quot;shell.collectionpage.layoutId&quot;].string}"
         modeGroup="contentsync-hosts-task-collection"

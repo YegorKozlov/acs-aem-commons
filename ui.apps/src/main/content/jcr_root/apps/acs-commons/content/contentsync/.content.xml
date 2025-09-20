@@ -7,6 +7,7 @@
         jcr:primaryType="cq:PageContent"
         jcr:title="Content Sync"
         sling:resourceType="granite/ui/components/shell/page"
+        sling:vanityPath="/contentsync"
         recurse="true">
         <head jcr:primaryType="nt:unstructured">
             <clientlibs
@@ -23,14 +24,14 @@
                 <configure
                     jcr:primaryType="nt:unstructured"
                     sling:resourceType="granite/ui/components/coral/foundation/anchorbutton"
-                    href="/apps/acs-commons/content/contentsync/configure.html"
+                    href="/contentsync/configure.html"
                     icon="gear"
                     text="Configure"
                     variant="primary"/>
                 <history
                     jcr:primaryType="nt:unstructured"
                     sling:resourceType="granite/ui/components/coral/foundation/anchorbutton"
-                    href="/apps/acs-commons/content/contentsync/history.html"
+                    href="/contentsync/history.html"
                     icon="stopwatch"
                     text="History"
                     variant="primary"/>
@@ -45,7 +46,7 @@
                     granite:id="transform-form"
                     jcr:primaryType="nt:unstructured"
                     sling:resourceType="granite/ui/components/coral/foundation/form"
-                    action="/apps/acs-commons/content/contentsync/jcr:content/sync.run.json"
+                    action="/contentsync/jcr:content/sync.run.json"
                     async="{Boolean}true"
                     dataPath="${requestPathInfo.suffix}"
                     enctype="application/x-www-form-urlencoded"
@@ -152,7 +153,7 @@
                     <successresponse
                         jcr:primaryType="nt:unstructured"
                         sling:resourceType="/libs/granite/ui/components/coral/foundation/form/responses/redirect"
-                        href="/apps/acs-commons/content/contentsync/history.html"/>
+                        href="/contentsync/history.html"/>
                 </form>
                 <settings
                     jcr:primaryType="nt:unstructured"
@@ -169,6 +170,7 @@
         </content>
         <sync
             jcr:primaryType="nt:unstructured"
+            sling:vanityPath="/contentsync/jcr:content/sync"
             sling:resourceType="acs-commons/components/utilities/contentsync"/>
     </jcr:content>
 </jcr:root>

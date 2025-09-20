@@ -47,11 +47,11 @@
                     <coral-tag color="${item.statusColor}" data-sly-test="${item.dryRun}">DRY RUN</coral-tag>
                 </td>
                 <td is="coral-table-cell">
-                    <a title="view log in a new tab" href="/apps/acs-commons/content/contentsync/jcr:content/sync.log.txt/${item.slingevent:eventId}" target="_blank"
+                    <a title="view log in a new tab" href="/contentsync/jcr:content/sync.log.txt/${item.slingevent:eventId}" target="_blank"
                        is="coral-anchorbutton" variant="quiet" icon="download" iconsize="S"></a>
                 </td>
                 <td is="coral-table-cell">
-                    <a title="re-run" href="/apps/acs-commons/content/contentsync.html/var/eventing/jobs/finished/acs-commons.contentsync.job/${item.slingevent:eventId}"
+                    <a title="re-run" href="/contentsync.html/var/eventing/jobs/finished/acs-commons.contentsync.job/${item.slingevent:eventId}"
                        is="coral-anchorbutton" variant="quiet" icon="redo" iconsize="S"></a>
                 </td>
             </tr>

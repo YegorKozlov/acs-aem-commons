@@ -30,9 +30,12 @@ import java.io.StringWriter;
 import java.util.*;
 
 import static com.adobe.acs.commons.contentsync.ContentSyncJobConsumer.JOB_TOPIC;
+import static com.adobe.acs.commons.contentsync.ContentSyncService.JOB_RESULTS_BASE_PATH;
 
-
-@Component(service = Servlet.class, immediate = true, property = {
+/**
+ * The UI form submits to this servlet to start content-sync jobs
+ */
+@Component(service = Servlet.class, property = {
         "sling.servlet.extensions=json",
         "sling.servlet.methods=POST",
         "sling.servlet.selectors=run",
@@ -43,12 +46,9 @@ public class ContentSyncRunServlet extends SlingAllMethodsServlet {
 
     @ObjectClassDefinition()
     @interface Config {
-        @AttributeDefinition(name = "Allowed Groups", type = AttributeType.STRING)
+        @AttributeDefinition(name = "Allowed Groups", description = "Principal names allowed run content-sync", type = AttributeType.STRING)
         String[] allowedGroups() default {};
     }
-
-    public static final String JOB_ID = "jobId";
-    public static final String JOB_STATUS = "status";
 
     @Reference
     private JobManager jobManager;
@@ -71,8 +71,9 @@ public class ContentSyncRunServlet extends SlingAllMethodsServlet {
             }
 
             JsonObjectBuilder result = Json.createObjectBuilder();
-            result.add(JOB_ID, job.getId());
-            result.add(JOB_STATUS, job.getJobState().toString());
+            for(String name : job.getPropertyNames()){
+                result.add(name, job.getProperty(name, String.class));
+            }
 
             slingResponse.setContentType("application/json");
             try (JsonWriter out = Json.createWriter(slingResponse.getWriter())) {
@@ -90,7 +91,7 @@ public class ContentSyncRunServlet extends SlingAllMethodsServlet {
     }
 
     /**
-     * create a job to build catalog of resources.
+     * Start a content-sync job.
      * All request parameters are passed to the job properties.
      */
     Job submitJob(SlingHttpServletRequest slingRequest) {
@@ -102,6 +103,10 @@ public class ContentSyncRunServlet extends SlingAllMethodsServlet {
         return jobManager.addJob(JOB_TOPIC, jobProps);
     }
 
+    /**
+     * Check if the request is allowed to start content-sync jobs and throw IllegalAccessException if it isn't
+     * See {@link Config#allowedGroups()}
+     */
     void checkAccess(SlingHttpServletRequest request) throws IllegalAccessException, RepositoryException {
         Set<String> groupIds = new HashSet<>();
         if (config.allowedGroups() != null) groupIds.addAll(Arrays.asList(config.allowedGroups()));
@@ -122,6 +127,12 @@ public class ContentSyncRunServlet extends SlingAllMethodsServlet {
         }
     }
 
+    /**
+     * Wait till the job is available to display in the UI.
+     *
+     * It can take a few seconds between calling jobManager.addJob(...)
+     * and availability of the created job in jobManager.findJobs (...)
+     */
     Job ensureAvailable(String jobId, long pollMs, long maxWait) throws InterruptedException {
         Job job = null;
 

@@ -5,11 +5,7 @@ import com.adobe.acs.commons.contentsync.*;
 import com.adobe.granite.workflow.WorkflowSession;
 import com.adobe.granite.workflow.exec.WorkflowData;
 import com.adobe.granite.workflow.model.WorkflowModel;
-import org.apache.sling.api.resource.Resource;
-import org.apache.sling.api.resource.ResourceResolver;
-import org.apache.sling.api.resource.ResourceResolverFactory;
-import org.apache.sling.api.resource.ResourceUtil;
-import org.apache.sling.api.resource.ValueMap;
+import org.apache.sling.api.resource.*;
 import org.apache.sling.api.wrappers.ValueMapDecorator;
 import org.apache.sling.event.jobs.Job;
 import org.apache.sling.jcr.contentloader.ContentImporter;
@@ -31,8 +27,6 @@ import java.util.stream.Collectors;
 
 @Component
 public class ContentSyncServiceImpl implements  ContentSyncService {
-    public static final String SERVICE_NAME = "content-sync-writer";
-    public static final Map<String, Object> AUTH_INFO = Collections.singletonMap(ResourceResolverFactory.SUBSERVICE, SERVICE_NAME);
 
     private final transient Map<String, UpdateStrategy> updateStrategies = Collections.synchronizedMap(new LinkedHashMap<>());
 
@@ -100,10 +94,12 @@ public class ContentSyncServiceImpl implements  ContentSyncService {
     public List<CatalogItem> getItemsToSync(ExecutionContext context) throws Exception, GeneralSecurityException, URISyntaxException, InterruptedException {
         boolean incremental = context.getJob().getProperty("incremental") != null;
 
+        // call the remote AEM instance, block until complete
         List<CatalogItem> remoteItems = getRemoteItems(context);
         context.put(ExecutionContext.REMOTE_ITEMS, remoteItems);
         List<CatalogItem> lst = new ArrayList<>();
 
+        // compare the list of items fetched from remote with the local and figure out which ones need sync-ing
         try (ResourceResolver resourceResolver = resourceResolverFactory.getServiceResourceResolver(AUTH_INFO)) {
             ValueMap generalSettings = ConfigurationUtils.getSettingsResource(resourceResolver).getValueMap();
 
@@ -111,6 +107,11 @@ public class ContentSyncServiceImpl implements  ContentSyncService {
             UpdateStrategy updateStrategy = getStrategy(strategyPid);
             context.put(ExecutionContext.UPDATE_STRATEGY, updateStrategy);
             for(CatalogItem item : remoteItems){
+                if(item.getCustomExporter() != null){
+                    context.log( "{0} has a custom json exporter ({1}}) and cannot be imported", item.getPath(), item.getCustomExporter());
+                    continue;
+                }
+
                 Resource resource = resourceResolver.getResource(item.getPath());
                 if(resource == null || !incremental || updateStrategy.isModified(item, resource)){
                     item.setMessage(updateStrategy.getMessage(item, resource));
@@ -124,10 +125,6 @@ public class ContentSyncServiceImpl implements  ContentSyncService {
 
     @Override
     public void syncItem(CatalogItem item, ExecutionContext context) throws Exception {
-        if(item.getCustomExporter() != null){
-            context.log( "{0} has a custom json exporter ({1}}) and cannot be imported", item.getPath(), item.getCustomExporter());
-            return;
-        }
         context.log("{0}", item.getMessage());
         if(context.dryRun()){
             return;
@@ -157,6 +154,7 @@ public class ContentSyncServiceImpl implements  ContentSyncService {
                 }
 
                 resourceResolver.commit();
+                item.setUpdated(true);
             } catch (Exception e){
                 StringWriter sw = new StringWriter();
                 e.printStackTrace(new PrintWriter(sw));
@@ -206,6 +204,9 @@ public class ContentSyncServiceImpl implements  ContentSyncService {
 
     }
 
+    /**
+     * For each path ensure that the order of child nodes is the same as on the remote instance
+     */
     @Override
     public void sortNodes(Collection<String> paths, ExecutionContext context) throws Exception{
         try (ResourceResolver resourceResolver = resourceResolverFactory.getServiceResourceResolver(AUTH_INFO)) {
@@ -242,8 +243,15 @@ public class ContentSyncServiceImpl implements  ContentSyncService {
         return sortedNodes;
     }
 
+    /**
+     *  Delete resources that exist in the destination but not in the source
+     */
     @Override
-    public void delete(ExecutionContext context) throws Exception {
+    public void deleteUnknownResources(ExecutionContext context) throws Exception {
+        if(context.getJob().getProperty("delete") == null){
+            return;
+        }
+
         Job job = context.getJob();
         UpdateStrategy updateStrategy = (UpdateStrategy)context.get(ExecutionContext.UPDATE_STRATEGY);
         List<CatalogItem> remoteItems = (List<CatalogItem>)context.get(ExecutionContext.REMOTE_ITEMS);
@@ -282,6 +290,7 @@ public class ContentSyncServiceImpl implements  ContentSyncService {
         }
         try (ResourceResolver resourceResolver = resourceResolverFactory.getServiceResourceResolver(AUTH_INFO)) {
             List<String> paths = items.stream()
+                    .filter(itm -> itm.isUpdated())
                     .map(item -> item.getPath())
                     .filter(path -> resourceResolver.getResource(path) != null)
                     .collect(Collectors.toList());
@@ -296,4 +305,10 @@ public class ContentSyncServiceImpl implements  ContentSyncService {
             }
         }
     }
+
+    @Override
+    public ResourceResolverFactory getResourceResolverFactory() throws LoginException {
+        return resourceResolverFactory;
+    }
+
 }

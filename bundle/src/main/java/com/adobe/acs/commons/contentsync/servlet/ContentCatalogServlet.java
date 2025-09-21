@@ -41,7 +41,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 import static com.adobe.acs.commons.contentsync.ContentCatalogJobConsumer.JOB_TOPIC;
-import static org.apache.sling.event.jobs.Job.PROPERTY_RESULT_MESSAGE;
+import static com.adobe.acs.commons.contentsync.ContentSyncService.JOB_RESULTS_BASE_PATH;
 
 /**
  * Submits a catalog job or retrieves job status and results.
@@ -96,7 +96,6 @@ public class ContentCatalogServlet extends SlingSafeMethodsServlet {
     public static final String JOB_ID = "jobId";
     public static final String JOB_STATUS = "status";
     public static final String JOB_RESOURCES = "resources";
-    public static final String JOB_RESULTS_BASE_PATH = "/var/acs-commons/contentsync/jobs";
     public static final String JOB_RESULTS = "results";
 
     @Reference

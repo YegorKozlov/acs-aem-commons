@@ -37,6 +37,7 @@ import static org.apache.jackrabbit.JcrConstants.JCR_MIXINTYPES;
 public class CatalogItem {
     private final JsonObject object;
     private String message;
+    private boolean updated;
 
     public CatalogItem(JsonObject object){
         this.object = object;
@@ -93,5 +94,13 @@ public class CatalogItem {
 
     public void setMessage(String message){
         this.message = message;
+    }
+
+    public boolean isUpdated(){
+        return updated;
+    }
+
+    public void setUpdated(boolean flag){
+        updated = flag;
     }
 }

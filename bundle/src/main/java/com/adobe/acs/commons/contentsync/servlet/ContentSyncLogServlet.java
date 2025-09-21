@@ -1,25 +1,27 @@
 package com.adobe.acs.commons.contentsync.servlet;
 
+import com.adobe.acs.commons.contentsync.ExecutionContext;
+import com.adobe.acs.commons.contentsync.io.JobLogIterator;
 import org.apache.sling.api.SlingHttpServletRequest;
 import org.apache.sling.api.SlingHttpServletResponse;
+import org.apache.sling.api.resource.Resource;
+import org.apache.sling.api.resource.ValueMap;
 import org.apache.sling.api.servlets.SlingSafeMethodsServlet;
 import org.apache.sling.event.jobs.Job;
 import org.apache.sling.event.jobs.JobManager;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
 
-import javax.json.Json;
-import javax.json.JsonArrayBuilder;
-import javax.json.JsonObjectBuilder;
-import javax.json.JsonWriter;
 import javax.servlet.Servlet;
 import javax.servlet.http.HttpServletResponse;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.PrintWriter;
 
-import static org.apache.sling.event.jobs.Job.PROPERTY_RESULT_MESSAGE;
-
-@Component(service = Servlet.class, immediate = true, property = {
+/**
+ * Print the job progress log as text.
+ */
+@Component(service = Servlet.class,  property = {
         "sling.servlet.extensions=txt",
         "sling.servlet.selectors=log",
         "sling.servlet.resourceTypes=acs-commons/components/utilities/contentsync",
@@ -44,15 +46,20 @@ public class ContentSyncLogServlet extends SlingSafeMethodsServlet {
         Job job = jobManager.getJobById(jobId);
         if(job == null) throw new FileNotFoundException("Job not found: " + jobId);
 
-        String[] progressLog = (String[])job.getProperty(Job.PROPERTY_JOB_PROGRESS_LOG);
-        String resultMessage = (String)job.getProperty(PROPERTY_RESULT_MESSAGE);
-
-        if(progressLog != null) {
-            for(String msg : progressLog){
-                slingResponse.getWriter().println(msg);
+        String logPath = ExecutionContext.getLogPath(job);
+        Resource logResource = slingRequest.getResourceResolver().getResource(logPath);
+        if(logResource != null) {
+            JobLogIterator it = new JobLogIterator(logResource);
+            while (it.hasNext()) {
+                String[] msg = it.next();
+                for (String ln : msg) {
+                    slingResponse.getWriter().println(ln);
+                }
             }
-        } else if (resultMessage != null) {
-            slingResponse.getWriter().println(resultMessage);
+        }
+        String[] progressLog = (String[])job.getProperty(Job.PROPERTY_JOB_PROGRESS_LOG);
+        if(progressLog != null) for(String msg : progressLog){
+            slingResponse.getWriter().println(msg);
         }
     }
 }

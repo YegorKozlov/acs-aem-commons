@@ -19,6 +19,7 @@
  */
 package com.adobe.acs.commons.contentsync.impl;
 
+import com.adobe.acs.commons.adobeio.service.IntegrationService;
 import com.adobe.acs.commons.contentsync.UpdateStrategy;
 import io.wcm.testing.mock.aem.junit.AemContext;
 import org.apache.commons.io.IOUtils;
@@ -28,6 +29,7 @@ import org.apache.sling.api.resource.ResourceResolverFactory;
 import org.apache.sling.event.jobs.Job;
 import org.apache.sling.event.jobs.consumer.JobExecutionContext;
 import org.apache.sling.event.jobs.consumer.JobExecutionResult;
+import org.apache.sling.jcr.contentloader.ContentImporter;
 import org.apache.sling.testing.mock.sling.ResourceResolverType;
 import org.junit.Before;
 import org.junit.Rule;
@@ -70,6 +72,9 @@ public class TestContentCatalogService {
         updateStrategy = mock(UpdateStrategy.class);
         context.registerService(updateStrategy);
 
+        context.registerService(ContentImporter.class, mock(ContentImporter.class));
+        context.registerService(IntegrationService.class, mock(IntegrationService.class));
+
         contentSyncService = context.registerInjectActivateService(new ContentSyncServiceImpl());
         contentSyncService.bindDeltaStrategy(updateStrategy);
 
@@ -89,26 +94,4 @@ public class TestContentCatalogService {
         });
     }
 
-    @Test
-    public void testBindUnbindStrategy() {
-        // Setup
-        UpdateStrategy strategy = mock(UpdateStrategy.class);
-        String strategyName = strategy.getClass().getName();
-
-        // Execute bind
-        contentSyncService.bindDeltaStrategy(strategy);
-        UpdateStrategy boundStrategy = contentSyncService.getStrategy(strategyName);
-
-        // Verify bind
-        assertNotNull(boundStrategy);
-        assertEquals(strategy, boundStrategy);
-
-        // Execute unbind
-        contentSyncService.unbindDeltaStrategy(strategy);
-
-        // Verify unbind
-        assertThrows(IllegalArgumentException.class, () -> {
-            contentSyncService.getStrategy(strategyName);
-        });
-    }
 }

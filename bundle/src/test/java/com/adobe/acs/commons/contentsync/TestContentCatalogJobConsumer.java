@@ -43,8 +43,6 @@ import java.io.StringReader;
 import java.nio.charset.StandardCharsets;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertThrows;
 import static org.mockito.Mockito.anyMap;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -72,6 +70,8 @@ public class TestContentCatalogJobConsumer {
 
         updateStrategy = mock(UpdateStrategy.class);
         context.registerService(updateStrategy);
+
+        context.registerService(ContentSyncService.class, mock(ContentSyncService.class));
 
         consumer = context.registerInjectActivateService(new ContentCatalogJobConsumer());
 

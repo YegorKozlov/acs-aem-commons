@@ -32,9 +32,7 @@ import org.osgi.service.component.annotations.Reference;
 
 import javax.json.*;
 import javax.servlet.Servlet;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
+import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -96,7 +94,6 @@ public class ContentCatalogServlet extends SlingSafeMethodsServlet {
     public static final String JOB_ID = "jobId";
     public static final String JOB_STATUS = "status";
     public static final String JOB_RESOURCES = "resources";
-    public static final String JOB_RESULTS = "results";
 
     @Reference
     private JobManager jobManager;
@@ -106,26 +103,37 @@ public class ContentCatalogServlet extends SlingSafeMethodsServlet {
         response.setContentType("application/json");
 
         JsonObjectBuilder result = Json.createObjectBuilder();
-        String jobId = request.getParameter(JOB_ID);
-        if (jobId == null) {
-            Job job = submitJob(request);
-            result.add(JOB_ID, job.getId());
-            result.add(JOB_STATUS, job.getJobState().toString());
-        } else {
-            result.add(JOB_ID, jobId);
-            Job job = jobManager.getJobById(jobId);
-            if(job != null){
-                result.add(JOB_STATUS, job.getJobState().toString());
-                String[] progressLog = (String[])job.getProperty(Job.PROPERTY_JOB_PROGRESS_LOG);
-                if(progressLog != null){
-                    result.add(Job.PROPERTY_JOB_PROGRESS_LOG, String.join("\n", Arrays.asList(progressLog)));
-                }
-                String resultsPath = getJobResultsPath(job);
-                JsonArray results = getJobResults(request, resultsPath);
-                result.add(JOB_RESOURCES, results);
-            }
-        }
+        try {
 
+            String jobId = request.getParameter(JOB_ID);
+            if (jobId == null) {
+                Job job = submitJob(request);
+                result.add(JOB_ID, job.getId());
+                result.add(JOB_STATUS, job.getJobState().toString());
+            } else {
+                result.add(JOB_ID, jobId);
+                Job job = jobManager.getJobById(jobId);
+                if (job != null) {
+                    result.add(JOB_STATUS, job.getJobState().toString());
+                    String[] progressLog = (String[]) job.getProperty(Job.PROPERTY_JOB_PROGRESS_LOG);
+                    if (progressLog != null) {
+                        result.add(Job.PROPERTY_JOB_PROGRESS_LOG, String.join("\n", Arrays.asList(progressLog)));
+                    }
+                    String resultsPath = getJobResultsPath(job);
+                    JsonArray results = getJobResults(request, resultsPath);
+                    if(results != null){
+                        result.add(JOB_RESOURCES, results);
+                    }
+                } else {
+                    throw new ResourceNotFoundException(jobId, "Sling job was not found by id");
+                }
+            }
+        } catch(Exception e){
+            StringWriter sw = new StringWriter();
+            e.printStackTrace(new PrintWriter(sw));
+            result.add(JOB_STATUS, Job.JobState.ERROR.toString());
+            result.add(Job.PROPERTY_JOB_PROGRESS_LOG, sw.toString());
+        }
         try (JsonWriter out = Json.createWriter(response.getWriter())) {
             out.writeObject(result.build());
         }
@@ -137,7 +145,6 @@ public class ContentCatalogServlet extends SlingSafeMethodsServlet {
      */
     Job submitJob(SlingHttpServletRequest request){
         Map<String, Object> jobProps = new HashMap<>();
-        jobProps.put(JOB_RESULTS, JOB_RESULTS_BASE_PATH + "/%s/results");
         request.getParameterMap().forEach((key, value) -> jobProps.put(key, value[0]));
         return jobManager.addJob(JOB_TOPIC, jobProps);
     }
@@ -150,7 +157,7 @@ public class ContentCatalogServlet extends SlingSafeMethodsServlet {
         ResourceResolver resourceResolver = request.getResourceResolver();
         Resource resultsNode = resourceResolver.getResource(resultsPath);
         if(resultsNode == null) {
-            throw new ResourceNotFoundException(resultsPath);
+            return null;
         }
         try(InputStream inputStream = resultsNode.adaptTo(InputStream.class);
             JsonReader reader = Json.createReader(new InputStreamReader(inputStream, StandardCharsets.UTF_8))
@@ -171,7 +178,6 @@ public class ContentCatalogServlet extends SlingSafeMethodsServlet {
      * @return  the path to a nt:file resource with the job results as JSON
      */
     public static String getJobResultsPath(Job job) {
-        String ptrn = (String)job.getProperty(JOB_RESULTS);
-        return String.format(ptrn, job.getId());
+        return String.format(JOB_RESULTS_BASE_PATH + "/%s/results", job.getId());
     }
 }

@@ -21,8 +21,6 @@ package com.adobe.acs.commons.contentsync.io;
 
 import io.wcm.testing.mock.aem.junit.AemContext;
 import org.apache.sling.api.resource.Resource;
-import org.apache.sling.api.resource.ResourceResolver;
-import org.apache.sling.api.resource.ValueMap;
 
 import org.apache.sling.testing.mock.sling.ResourceResolverType;
 import org.junit.Before;
@@ -31,7 +29,7 @@ import org.junit.Test;
 
 import static org.junit.Assert.*;
 
-public class JobLogIteratorTest {
+public class TestJobLogIterator {
     @Rule
     public AemContext context = new AemContext(ResourceResolverType.RESOURCERESOLVER_MOCK);
 

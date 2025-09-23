@@ -221,7 +221,7 @@ public class TestContentReader {
     public void testToISO8601_ValidEcmaDate() {
         // Example ECMA date: "Tue Jan 01 2019 12:34:56 GMT+0000"
         String ecmaDate = "Tue Jan 01 2019 12:34:56 GMT+0000";
-        String iso = reader.toISO8601(ecmaDate);
+        String iso = ContentReader.toISO8601(ecmaDate);
         // Should be ISO8601 format, e.g. "2019-01-01T12:34:56.000Z" or similar
         assertTrue("Should convert to ISO8601", iso.startsWith("2019-01-01T12:34:56"));
     }
@@ -229,10 +229,10 @@ public class TestContentReader {
     @Test
     public void testToISO8601_InvalidDateReturnsInput() {
         String invalid = "not a date";
-        assertEquals("not a date", reader.toISO8601(invalid));
+        assertEquals("not a date", ContentReader.toISO8601(invalid));
     }
 
     @Test
     public void testToISO8601_NullInput() {
-         assertNull(reader.toISO8601(null));
+         assertNull(ContentReader.toISO8601(null));
     }}

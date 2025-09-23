@@ -110,5 +110,15 @@
     });
     
 
-    
+    $(window).adaptTo("foundation-registry").register("foundation.form.response.ui.error", {
+        name: "foundation.default",
+        handler: function(a, g, e, b, d) {
+            a = "Error";
+            d = "Fail to submit the form. Make sure you have permissions to run content sync.";
+            ui.alert(a, d, "error");
+        }
+    });
+
+
+
 })(document, Granite.$);

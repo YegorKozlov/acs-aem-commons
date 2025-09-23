@@ -224,13 +224,21 @@ public class ContentReader {
         return binaryProperties;
     }
 
-    public String toISO8601(String ecmaDate){
+    public static boolean isECMADate(String str) {
+        return ECMA_REGEX.matcher(str).matches();
+    }
+
+    public static Calendar parseEcmaDate(String ecmaDate){
         try {
             ZonedDateTime zonedDateTime = ZonedDateTime.parse(ecmaDate, ECMA_DATE_FORMAT);
-            Calendar calendar = GregorianCalendar.from(zonedDateTime);
-            return ISO8601.format(calendar);
+            return GregorianCalendar.from(zonedDateTime);
         } catch(Exception e){
-            return ecmaDate;
+            return null;
         }
+    }
+
+    public static String toISO8601(String ecmaDate){
+        Calendar calendar = parseEcmaDate(ecmaDate);
+        return calendar == null ? ecmaDate : ISO8601.format(calendar);
     }
 }

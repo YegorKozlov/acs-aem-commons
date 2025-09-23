@@ -31,6 +31,8 @@ import java.util.*;
 
 import static com.adobe.acs.commons.contentsync.ContentSyncJobConsumer.JOB_TOPIC;
 import static com.adobe.acs.commons.contentsync.ContentSyncService.JOB_RESULTS_BASE_PATH;
+import static com.adobe.acs.commons.contentsync.servlet.ContentCatalogServlet.JOB_ID;
+import static com.adobe.acs.commons.contentsync.servlet.ContentCatalogServlet.JOB_STATUS;
 
 /**
  * The UI form submits to this servlet to start content-sync jobs
@@ -71,6 +73,8 @@ public class ContentSyncRunServlet extends SlingAllMethodsServlet {
             }
 
             JsonObjectBuilder result = Json.createObjectBuilder();
+            result.add(JOB_ID, job.getId());
+            result.add(JOB_STATUS, job.getJobState().toString());
             for(String name : job.getPropertyNames()){
                 result.add(name, job.getProperty(name, String.class));
             }

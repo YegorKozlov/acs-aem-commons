@@ -46,6 +46,7 @@ import java.util.stream.Collectors;
 
 @Component
 public class ContentSyncServiceImpl implements ContentSyncService {
+    public static final int COMPLETION_CHECK_INTERVAL = 3000;
 
     /**
      * Map of registered update strategies, keyed by class name.
@@ -101,9 +102,10 @@ public class ContentSyncServiceImpl implements ContentSyncService {
         context.log("building catalog from {0}", contentCatalog.getFetchURI(root, strategyPid, recursive));
 
         String jobId = contentCatalog.startCatalogJob(root, strategyPid, recursive);
+        context.log("Remote jobId: {0}", jobId);
         for (; ; ) {
             context.log("{0}", "collecting resources on the remote instance...");
-            Thread.sleep(3000L);
+            Thread.sleep(COMPLETION_CHECK_INTERVAL);
 
             if (contentCatalog.isComplete(jobId)) {
                 break;
@@ -111,6 +113,7 @@ public class ContentSyncServiceImpl implements ContentSyncService {
         }
 
         List<CatalogItem> items = contentCatalog.getResults();
+        context.log("catalog url: {0}", contentCatalog.getStatusCatalogJobURI(jobId));
         context.log("{0} resource(s) fetched in {1} ms", items.size(), (System.currentTimeMillis() - t0));
         return items;
     }
@@ -230,7 +233,7 @@ public class ContentSyncServiceImpl implements ContentSyncService {
 
         try (ResourceResolver resourceResolver = resourceResolverFactory.getServiceResourceResolver(AUTH_INFO)) {
             generalSettings = new ValueMapDecorator(
-                    new HashMap(ConfigurationUtils.getSettingsResource(resourceResolver).getValueMap())
+                    new HashMap<>(ConfigurationUtils.getSettingsResource(resourceResolver).getValueMap())
             );
             hostConfig = resourceResolver.getResource(cfgPath).adaptTo(SyncHostConfiguration.class);
         }

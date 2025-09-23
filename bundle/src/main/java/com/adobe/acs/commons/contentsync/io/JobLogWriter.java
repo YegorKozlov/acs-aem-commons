@@ -21,15 +21,10 @@ package com.adobe.acs.commons.contentsync.io;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 import org.apache.jackrabbit.JcrConstants;
-import org.apache.sling.api.resource.LoginException;
-import org.apache.sling.api.resource.ResourceResolver;
-import org.apache.sling.api.resource.ResourceResolverFactory;
-import org.apache.sling.api.resource.ResourceUtil;
+import org.apache.sling.api.resource.*;
 import org.apache.sling.jcr.resource.api.JcrResourceConstants;
 
 import com.adobe.acs.commons.contentsync.ContentSyncService;
@@ -148,10 +143,10 @@ public class JobLogWriter implements AutoCloseable {
         try (ResourceResolver resourceResolver = resolverFactory.getServiceResourceResolver(ContentSyncService.AUTH_INFO)) {
             String shardPath = shardGenerator.getPath();
 
-            Map<String, Object> resourceProperties = new HashMap<>();
-            resourceProperties.put(JcrConstants.JCR_PRIMARYTYPE, JcrConstants.NT_UNSTRUCTURED);
-            resourceProperties.put(DATA_PROPERTY, buffer.toArray(new String[0]));
-            ResourceUtil.getOrCreateResource(resourceResolver, shardPath, resourceProperties, JcrResourceConstants.NT_SLING_FOLDER, true);
+            Resource res = ResourceUtil.getOrCreateResource(resourceResolver, shardPath,
+                    JcrConstants.NT_UNSTRUCTURED, JcrResourceConstants.NT_SLING_FOLDER, false);
+            res.adaptTo(ModifiableValueMap.class).put(DATA_PROPERTY, buffer.toArray(new String[0]));
+            resourceResolver.commit();
             lastFlushed = System.currentTimeMillis();
         } catch (LoginException e){
             throw new IOException(e);
